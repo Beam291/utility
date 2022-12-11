@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apache-deployment
+spec:
+  selector:
+    matchLabels:
+      run: apache-app
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: apache-app
+    spec:
+      containers:
+      - name: apache-container
+        image: localhost:5000/ubuntu
+        ports:
+        - containerPort: 80

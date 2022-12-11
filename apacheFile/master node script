@@ -1,0 +1,108 @@
+#deploy kubernetes on master node
+
+sudo bash
+
+apt-get update -y
+
+hostnamectl set-hostname master
+
+echo "masterIP master" >> /etc/hosts
+echo "slave1IP slave1" >> /etc/hosts
+echo "slave2IP slave2" >> /etc/hosts
+echo "slave3IP slave3" >> /etc/hosts
+
+
+swapoff -a
+
+wget -qO- https://get.docker.com/ | sh
+
+modprobe br_netfilter
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+
+sysctl --system
+
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+
+apt-get update
+apt-get install -y kubelet kubeadm kubectl
+
+As a root user, open the file "/etc/systemd/system/kubelet.service.d/10-kubeadm.conf" and edit the
+"KUBELET_CONFIG_ARGS" configuration, i.e add " --cgroup-driver=cgroupfs " as an argument, then
+reload systemd
+
+systemctl daemon-reload
+
+
+rm /etc/containerd/config.toml
+systemctl restart containerd
+kubeadm init --pod-network-cidr=10.244.0.0/16
+
+
+==> get 'kubeadm join ... command
+
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+==========================================================================================================
+
+#slave nodes joined..................
+
+============================================================================================================
+#Deploy apache
+
+mkdir -p apache/
+cd apache/
+
+#content dockerfile on git
+nano dockerfile 
+
+
+#content app.php on git
+nano app.php 
+
+
+wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1zpbjIhA6sBVOh8Y81wocGqTndnVtu-ZS' -O index.php
+wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1mDsUcMVphKWZpccapaGNLXJzG8PgQyT3' -O haproxy.cfg
+
+
+#content on git
+nano start-apache2.sh 
+
+chmod +x start-apache2.sh
+docker build -t apache:v1 .
+
+#content on git
+nano apache-deployment.yaml 
+
+kubectl create -f apache-deployment.yaml
+
+#content on git
+nano apache-service.yaml
+
+kubectl create -f apache-service.yaml
+
+kubectl scale deployment apache-deployment --replicas=0
+kubectl scale deployment apache-deployment --replicas=2
+
+
+
+
+
+
+
+
+
+
+
+
